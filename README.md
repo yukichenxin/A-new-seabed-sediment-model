@@ -1,23 +1,28 @@
-## YOLOC 联合语义分割和目标检测的高效融合算法
+## A Precise Semantic Segmentation Model for Seabed Sediment Detection using YOLO-C
 
 
 ## Top News
-**支持多GPU训练，新增各个种类目标数量计算，新增heatmap。**  
+** It supports multi-GPU training for faster convergence and improved efficiency. The model incorporates a novel object quantity calculation and heatmap generation.**  
 
-**支持step、cos学习率下降法、支持adam、sgd优化器选择、支持学习率根据batch_size自适应调整、新增图片裁剪。**  
+**It also supports popular learning rate scheduling techniques and allows for flexible optimization algorithm selection. YOLO-C includes adaptive learning rate adjustment based on batch size and enables image cropping. **  
 
-**支持不同尺寸模型训练、支持大量可调整参数，支持fps、视频预测、批量预测等功能。**   
+**It supports training of models with different sizes and provides a wide range of adjustable parameters. Additionally, YOLO-C offers functionalities such as real-time object detection, video prediction, and batch inference. These features collectively contribute to the versatility and high performance of YOLO-C in various computer vision applications.**   
 
 ## 实现的内容
-- [x] 基于YOLO的检测结构
-- [x] 基于YOLO的backbone和PAFPN作为Encoder，实现类unet结构的分割结构
-- [x] 检测结构和分割结构的高效融合
+- [x] Based on the YOLO detection architecture
+- [x] Utilizes the YOLO backbone and PAFPN as the encoder to achieve a UNet-like segmentation structure
+- [x] Efficient fusion of the detection and segmentation structures
 
 ## 所需环境
 pytorch==1.2.0
 
 
 ## 训练步骤
+In this study, the training was conducted using the VOC format. Prior to training, it is necessary to prepare the dataset as follows:
+1. Put the label files in the "Annotation" folder, which is located under the "VOC2007" folder in the "VOCdevkit" directory.
+2. Put the image files in the "JPEGImages" folder, which is located under the "VOC2007" folder in the "VOCdevkit" directory.
+3. Plut the image labels in the "SegmentationClass" folder, which is located under the "VOC2007" folder in the "VOCdevkit" directory.
+These steps ensure that the dataset is properly organized and ready for training.
 **本文使用VOC格式进行训练，训练前需要自己制作好数据集，**    
 训练前将标签文件放在VOCdevkit文件夹下的VOC2007文件夹下的Annotation中。   
 训练前将图片文件放在VOCdevkit文件夹下的VOC2007文件夹下的JPEGImages中。
@@ -27,13 +32,13 @@ CUDA_VISIBLE_DEVICES=0 python train.py
 ```
 
 ## 预测步骤
-**修改好根目录下的yolo.py**
+**modify root yolo.py**
 ```python
 CUDA_VISIBLE_DEVICES=0 python predict.py
 ```
 
 ## 评估步骤 
-**修改好根目录下的get_miou.py和get_map.py**
+**modify root get_miou.py和get_map.py**
 ```python
 #得到分割的指标
 CUDA_VISIBLE_DEVICES=0 python get_miou.py 
