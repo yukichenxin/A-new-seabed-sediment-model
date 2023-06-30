@@ -26,10 +26,8 @@ class YOLO(object):
         #   验证集损失较低不代表mAP较高，仅代表该权值在验证集上泛化性能较好。
         #   如果出现shape不匹配，同时要注意训练时的model_path和classes_path参数的修改
         #--------------------------------------------------------------------------#
-        #"model_path"        : 'logs/best_epoch_weights.pth',
-        "model_path": r'E:/CXPAPER/yolox-seg_pro/logs/best_epoch_weights.pth',
-        "classes_path": r'E:/CXPAPER/yolox-seg_pro/model_data/new_classes.txt',
-        #"classes_path"      : 'model_data/new_classes.txt',
+        "model_path"        : 'logs/best_epoch_weights.pth',
+        "classes_path"      : 'model_data/new_classes.txt',
         #---------------------------------------------------------------------#
         #   输入图片的大小，必须为32的倍数。
         #---------------------------------------------------------------------#
@@ -78,7 +76,7 @@ class YOLO(object):
 
 
         if self.num_classes+1 <= 21:
-            self.colors_s = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128),
+            self.colors_s = [(0, 0, 0), (255, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128),
                            (0, 128, 128),
                            (128, 128, 128), (64, 0, 0), (192, 0, 0), (64, 128, 0), (192, 128, 0), (64, 0, 128),
                            (192, 0, 128),
@@ -111,11 +109,14 @@ class YOLO(object):
         device      = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net.load_state_dict(torch.load(self.model_path, map_location=device))
         self.net    = self.net.eval()
+        # self.net = self.net.cuda()
         print('{} model, and classes loaded.'.format(self.model_path))
+        #'''
         if not onnx:
             if self.cuda:
                 self.net = nn.DataParallel(self.net)
                 self.net = self.net.cuda()
+        #'''
 
     #---------------------------------------------------#
     #   检测图片
@@ -251,6 +252,7 @@ class YOLO(object):
 
         #---------------------------------------------------------#
         #   图像绘制
+        score = None
         #---------------------------------------------------------#
         for i, c in list(enumerate(top_label)):
             predicted_class = self.class_names[int(c)]
@@ -282,8 +284,47 @@ class YOLO(object):
             del draw
 
         seg_img = np.reshape(np.array(self.colors_s, np.uint8)[np.reshape(pr, [-1])], [orininal_h, orininal_w, -1])
-        seg_img = Image.fromarray(np.uint8(seg_img))
-        image = Image.blend(image, seg_img, 0.2)
+        seg_img_ = seg_img.copy()
+        prss = seg_img[:,:,0]
+        prss[prss>0] = 1
+        prss[prss<1] = 0
+        prss = np.array(prss, dtype=np.uint8)
+        contours, hierarchy = cv2.findContours(prss, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for j in range(len(contours)):
+            cnt = np.array(contours[j].squeeze(1))  # 必须是array数组的形式
+            area = cv2.contourArea(contours[j])
+            x, y, w, h = cv2.boundingRect(cnt)
+            top, left, bottom, right = y,x,y+h,x+w
+            if area < 20:
+                continue
+            top = max(0, np.floor(top).astype('int32'))
+            left = max(0, np.floor(left).astype('int32'))
+            bottom = min(image.size[1], np.floor(bottom).astype('int32'))
+            right = min(image.size[0], np.floor(right).astype('int32'))
+            if score is None:
+                score = 0.85
+            label = '{} {:.2f}'.format('architecture', score)
+            draw = ImageDraw.Draw(image)
+            label_size = draw.textsize(label, font)
+            label = label.encode('utf-8')
+            print(label, top, left, bottom, right)
+
+            if top - label_size[1] >= 0:
+                text_origin = np.array([left, top - label_size[1]])
+            else:
+                text_origin = np.array([left, top + 1])
+
+            for i in range(thickness):
+                draw.rectangle([left + i, top + i, right - i, bottom - i], outline=(255, 0, 0))
+            draw.rectangle([tuple(text_origin), tuple(text_origin + label_size)], fill=(255, 0, 0))
+            draw.text(text_origin, str(label, 'UTF-8'), fill=(0, 0, 0), font=font)
+            del draw
+
+
+        seg_img = Image.fromarray(np.uint8(seg_img_))
+
+
+        image = Image.blend(image, seg_img, 0.3)
         return image
     
     def get_FPS(self, image, test_interval):
@@ -334,6 +375,57 @@ class YOLO(object):
                                 
         t2 = time.time()
         tact_time = (t2 - t1)
+        return tact_time
+        
+    def get_FPS1(self, image, test_interval):
+        #---------------------------------------------------------#
+        #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
+        #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
+        #---------------------------------------------------------#
+        image       = cvtColor(image)
+        #---------------------------------------------------------#
+        #   给图像增加灰条，实现不失真的resize
+        #   也可以直接resize进行识别
+        #---------------------------------------------------------#
+        #---------------------------------------------------------#
+        #   添加上batch_size维度
+        #---------------------------------------------------------#
+        image_data = resize_image(image, (self.input_shape[1], self.input_shape[0]), self.letterbox_image)
+        image_data  = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, np.float32)), (2, 0, 1)), 0)
+
+        with torch.no_grad():
+            images = torch.from_numpy(image_data)
+            if self.cuda:
+                images = images.cuda()
+                
+            #---------------------------------------------------#
+            #   图片传入网络进行预测
+            #---------------------------------------------------#
+            pr = self.net.seg_forward(images)[0]
+            #---------------------------------------------------#
+            #   取出每一个像素点的种类
+            #---------------------------------------------------#
+            pr = F.softmax(pr.permute(1,2,0),dim = -1).cpu().numpy().argmax(axis=-1)
+            #--------------------------------------#
+            #   将灰条部分截取掉
+            #--------------------------------------#
+
+        t1 = time.time()
+        for _ in range(test_interval):
+            with torch.no_grad():
+                #---------------------------------------------------#
+                #   图片传入网络进行预测
+                #---------------------------------------------------#
+                pr = self.net.seg_forward(images)[0]
+                #---------------------------------------------------#
+                #   取出每一个像素点的种类
+                #---------------------------------------------------#
+                pr = F.softmax(pr.permute(1,2,0),dim = -1).cpu().numpy().argmax(axis=-1)
+                #--------------------------------------#
+                #   将灰条部分截取掉
+                #--------------------------------------#
+        t2 = time.time()
+        tact_time = (t2 - t1) / test_interval
         return tact_time
 
     def detect_heatmap(self, image, heatmap_save_path):

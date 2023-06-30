@@ -1,2 +1,1 @@
-sand_wave
-rock
+architecture

@@ -1,4 +1,4 @@
-#-------------------------------------#
+ #-------------------------------------#
 #       对数据集进行训练
 #-------------------------------------#
 import datetime
@@ -87,8 +87,9 @@ if __name__ == "__main__":
     #      可以设置mosaic=True，直接随机初始化参数开始训练，但得到的效果仍然不如有预训练的情况。（像COCO这样的大数据集可以这样做）
     #   2、了解imagenet数据集，首先训练分类模型，获得网络的主干部分权值，分类模型的 主干部分 和该模型通用，基于此进行训练。
     #----------------------------------------------------------------------------------------------------------------------------#
-    model_path      = 'model_data/yolox_s.pth'
-    model_path = 'logs/ep050-loss0.853-val_loss0.908.pth'
+    model_path1      = 'model_data/unet.pth'
+    model_path = 'model_data/yolox.pth'
+    
     #------------------------------------------------------#
     #   input_shape     输入的shape大小，一定要是32的倍数
     #------------------------------------------------------#
@@ -276,6 +277,33 @@ if __name__ == "__main__":
                 no_load_key.append(k)
         model_dict.update(temp_dict)
         model.load_state_dict(model_dict)
+    if model_path1 != '':
+        #------------------------------------------------------#
+        #   权值文件请看README，百度网盘下载
+        #------------------------------------------------------#
+        if local_rank == 0:
+            print('Load weights {}.'.format(model_path1))
+        
+        #------------------------------------------------------#
+        #   根据预训练权重的Key和模型的Key进行加载
+        #------------------------------------------------------#
+        model_dict      = model.state_dict()
+        pretrained_dict = torch.load(model_path1, map_location = device)
+        load_key, no_load_key, temp_dict = [], [], {}
+        for k, v in pretrained_dict.items():
+            if k in model_dict.keys() and np.shape(model_dict[k]) == np.shape(v):
+                temp_dict[k] = v
+                load_key.append(k)
+            else:
+                no_load_key.append(k)
+        model_dict.update(temp_dict)
+        model.load_state_dict(model_dict)
+        
+        
+
+        
+        
+        
         #------------------------------------------------------#
         #   显示没有匹配上的Key
         #------------------------------------------------------#
