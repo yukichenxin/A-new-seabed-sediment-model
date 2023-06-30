@@ -44,3 +44,4 @@ CUDA_VISIBLE_DEVICES=0 python get_miou.py
 #Get the metric of detection
 CUDA_VISIBLE_DEVICES=0 python get_map.py 
 ```
+## Results
