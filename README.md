@@ -45,4 +45,4 @@ CUDA_VISIBLE_DEVICES=0 python get_miou.py
 CUDA_VISIBLE_DEVICES=0 python get_map.py 
 ```
 ## Results
-Please go to results file to read.
+Please go to the results file.
