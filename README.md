@@ -8,12 +8,12 @@
 
 **It supports training of models with different sizes and provides a wide range of adjustable parameters. Additionally, YOLO-C offers functionalities such as real-time object detection, video prediction, and batch inference. These features collectively contribute to the versatility and high performance of YOLO-C in various computer vision applications.**   
 
-## 实现的内容
+## HighLight
 - [x] Based on the YOLO detection architecture
 - [x] Utilizes the YOLO backbone and PAFPN as the encoder to achieve a UNet-like segmentation structure
 - [x] Efficient fusion of the detection and segmentation structures
 
-## 所需环境
+## Environment
 pytorch==1.2.0
 
 
