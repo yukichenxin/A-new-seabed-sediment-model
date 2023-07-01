@@ -34,7 +34,7 @@ CUDA_VISIBLE_DEVICES=0 python predict.py
 ```
 
 ## Evaluate 
-**modify root get_miou.py和get_map.py**
+**modify root get_miou.py and get_map.py**
 ```python
 #Get the metric of segmentation
 CUDA_VISIBLE_DEVICES=0 python get_miou.py 
